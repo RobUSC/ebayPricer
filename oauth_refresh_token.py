@@ -7,16 +7,20 @@ from ebaysdk.config import Config
 
 class OAuthRefreshToken(object):
 
+    config = {}
+
     def __init__(self, **kwargs):
         pass
 
-    def get_token(self, **kwargs):
-        self.config = Config(domain=kwargs.get('domain', 'api.ebay.com'),
+    @classmethod
+    def get_token(cls, **kwargs):
+        cls.config = Config(domain=kwargs.get('domain', 'api.ebay.com'),
                              connection_kwargs=kwargs,
                              config_file=kwargs.get('config_file', 'ebay.yaml'))
-        return self.getAuthToken(self.config.get('redirecturi'), self.config.get('appid'), self.config.get('certid'))
+        return cls.getAuthToken(cls.config.get('redirecturi'), cls.config.get('appid'), cls.config.get('certid'))
 
-    def getAuthToken(ru_name, app_id, cert_id):
+    @classmethod
+    def getAuthToken(cls,ru_name, app_id, cert_id):
         authHeaderData = app_id + ':' + cert_id
         encodedAuthHeader = base64.b64encode(str.encode(authHeaderData))
         encodedAuthHeader = str(encodedAuthHeader)[2:len(str(encodedAuthHeader)) - 1]

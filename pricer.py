@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
 import decimal
 import re
+
 import oauth_refresh_token
 
 from ebaysdk.finding import Connection as Connection_finding
@@ -8,43 +8,26 @@ from oauth_shopping_connection import OAuthShoppingConnection as Connection_shop
 from statistics import mean, median, mode
 
 
-class EbayPricer(object):
-    finding_api = Connection_finding(config_file='ebay.yaml', siteid="EBAY-US")
-    shopping_api = Connection_shopping(config_file='ebay.yaml', https=True)
+class EbayPricer:
 
-    comic_list = [
-        {'publisher': 'Image', 'title': 'Invincible', 'issue_number': '1', 'graded': 'true', 'grade': '9.6'},
-        {'publisher': 'Marvel', 'title': 'Amazing Spider-Man', 'issue_number': '300', 'graded': 'true', 'grade': '9.2'},
-        {'publisher': 'DC', 'title': 'Batman', 'issue_number': '423', 'graded': 'false', 'grade': ''},
-        {'publisher': 'Marvel', 'title': 'Incredible Hulk', 'issue_number': '181', 'graded': 'false', 'grade': '9.0'},
-        {'publisher': 'Image', 'title': 'Invincible', 'issue_number': '2', 'graded': 'false', 'grade': ''},
-        {'publisher': 'Image', 'title': 'Invincible', 'issue_number': '3', 'graded': 'false', 'grade': ''},
-        {'publisher': 'Image', 'title': 'Invincible', 'issue_number': '4', 'graded': 'false', 'grade': ''},
-        {'publisher': 'Marvel', 'title': 'Invincible', 'issue_number': 'X', 'graded': 'true', 'grade': ''},
-        {'publisher': 'Marvel', 'title': 'Batman', 'issue_number': '999999', 'graded': 'false', 'grade': '9.8'},
-        {'publisher': 'Marvel', 'title': 'X-Force', 'issue_number': '1', 'graded': 'true', 'grade': '9.8'}
-    ]
+    def __init__(self):
+        self.finding_api = None
+        self.shopping_api = None
+        self.collection_value = {}
 
-    important_fields = ['Series Title',
-                        'Issue Number',
-                        'Publisher',
-                        'Publication Year',
-                        'Unit of Sale',
-                        'Variant Type',
-                        'Type',
-                        'Format',
-                        'Era']
-    graded_fields = ['Certification Number',
-                     'Professional Grader',
-                     'Grade']
+    def getPrivatePaginatedListing(self, args):
+        self.finding_api = Connection_finding(config_file='ebay.yaml', siteid="EBAY-US")
+        self.shopping_api = Connection_shopping(config_file='ebay.yaml', https=True)
+        self.collection_value = {'mean': 0, 'median': 0, 'mode': 0, 'low': 0, 'high': 0}
+        item_list = args.get('item_list', [])
+        important_fields = args.get('important_fields', [])
+        conditional_fields = args.get('conditional_fields', [])
 
-    start = decimal.Decimal(0)
-    category_id = 259104
-    collection_value = {'mean': start, 'median': start, 'mode': start, 'low': start, 'high': start}
+        category_id = args.get('category_id', 29504)
 
-    def getPrices(self):
-        token = oauth_refresh_token.OAuthRefreshToken.get_token(oauth_refresh_token.OAuthRefreshToken)
-        for comic in self.comic_list:
+
+        token = oauth_refresh_token.OAuthRefreshToken.get_token()
+        for comic in item_list:
             match = False
             grade = ''
             graded = comic['graded'] == 'true'
@@ -60,7 +43,7 @@ class EbayPricer(object):
             request = {
                 'keywords': keyword,
                 'itemFilter': [
-                    {'name': 'categoryId', 'value': self.category_id},
+                    {'name': 'categoryId', 'value': category_id},
                     {'name': 'categoryId', 'value': '259104'},
                 ],
                 'paginationInput': {
@@ -104,7 +87,7 @@ class EbayPricer(object):
                     'token': token['access_token']
                 }
 
-                shopping_response = self.shopping_api.execute('GetMultipleItems', data=r,)
+                shopping_response = self.shopping_api.execute('GetMultipleItems', data=r, )
                 if shopping_response.reply.Ack == 'Success':
                     for shopping_item in shopping_response.reply.Item:
                         try:
@@ -113,9 +96,9 @@ class EbayPricer(object):
                                 itemMap = {}
                                 nameValueList = shopping_item.ItemSpecifics.NameValueList
                                 for entry in nameValueList:
-                                    if entry.Name in self.important_fields:
+                                    if entry.Name in important_fields:
                                         itemMap[entry.Name] = entry.Value
-                                    if graded and entry.Name in self.graded_fields:
+                                    if graded and entry.Name in conditional_fields:
                                         itemMap[entry.Name] = entry.Value
                                     if entry.Name == 'Publisher':
                                         shopping_item_publisher = entry.Value
@@ -177,3 +160,7 @@ class EbayPricer(object):
             print('=======================================================================')
 
         print('final pricing:\n%s' % self.collection_value)
+
+    @classmethod
+    def getPaginatedListing(cls, args):
+        return cls.getPrivatePaginatedListing(cls, args)
