@@ -8,43 +8,57 @@ from oauth_shopping_connection import OAuthShoppingConnection as Connection_shop
 from statistics import mean, median, mode
 
 
+def compareMaps(map1, map2, keys):
+    for key in keys:
+        if map1[key] != map2[key]:
+            if not map1[key].__contains__(map2[key]):
+                return False
+    return True
+
+
 class EbayPricer:
 
     def __init__(self):
         self.finding_api = None
         self.shopping_api = None
-        self.collection_value = {}
+        self.list_value = {}
 
     def getPrivatePaginatedListing(self, args):
         self.finding_api = Connection_finding(config_file='ebay.yaml', siteid="EBAY-US")
         self.shopping_api = Connection_shopping(config_file='ebay.yaml', https=True)
-        self.collection_value = {'mean': 0, 'median': 0, 'mode': 0, 'low': 0, 'high': 0}
+        self.list_value = {'mean': 0, 'median': 0, 'mode': 0, 'low': 0, 'high': 0}
+        exact_match_fields = args.get('exact_match_fields', [])
         item_list = args.get('item_list', [])
         important_fields = args.get('important_fields', [])
         conditional_fields = args.get('conditional_fields', [])
-
         category_id = args.get('category_id', 29504)
-
+        decider_field = args.get('decider_field', None)
 
         token = oauth_refresh_token.OAuthRefreshToken.get_token()
-        for comic in item_list:
+        for item in item_list:
             match = False
-            grade = ''
-            graded = comic['graded'] == 'true'
-            publisher = comic['publisher']
-            title = comic['title']
-            issue_number = comic['issue_number']
 
-            if graded:
-                grade = 'cgc ' + comic['grade']
+            keyword = ''
 
-            keyword = '%s %s %s %s' % (publisher, title, issue_number, grade)
+            if decider_field is not None and bool(item[decider_field]):
+                for field in conditional_fields:
+                    try:
+                        keyword += item[field] + ' '
+                    except KeyError as e:
+                       # Not all conditional fields will be supplied, but we want tyo fetch them anyway for mining
+                       pass
+
+            for field in exact_match_fields:
+                try:
+                    keyword += item[field] + ' '
+                except Exception as e:
+                    print(e)
+
             print('Searching for %s' % keyword)
             request = {
                 'keywords': keyword,
                 'itemFilter': [
                     {'name': 'categoryId', 'value': category_id},
-                    {'name': 'categoryId', 'value': '259104'},
                 ],
                 'paginationInput': {
                     'entriesPerPage': 20,
@@ -58,23 +72,30 @@ class EbayPricer:
             high = decimal.Decimal(0)
             low = decimal.Decimal(99999999999.99)
             prices = []
-            itemId_list = []
+            item_id_list = []
 
-            if int(response.reply.searchResult._count) > 0:
-                for item in response.reply.searchResult.item:
+            size = 0
+            try:
+               size = len(response.reply.searchResult.item)
+            except AttributeError as e:
+                #Sometimes, there are no items
+                pass
 
-                    if item is not None:
-                        price = decimal.Decimal(item.sellingStatus.currentPrice.value)
+            if size > 0:
+                for found_item in response.reply.searchResult.item:
+
+                    if found_item is not None:
+                        price = decimal.Decimal(found_item.sellingStatus.currentPrice.value)
                         if price > high:
                             high = price
-                            high_item = item
+                            high_item = found_item
 
                         if price < low:
                             low = price
-                            low_item = item
+                            low_item = found_item
 
                         prices.append(price)
-                        itemId_list.append(item.itemId)
+                        item_id_list.append(found_item.itemId)
                         # Save the itemId and price to DB for future fetch
 
                 if high_item is not None and high_item != low_item:
@@ -82,7 +103,7 @@ class EbayPricer:
                     print('Low item price is % and located at %s' % (low, low_item.viewItemURL))
 
                 r = {
-                    'ItemID': itemId_list,
+                    'ItemID': item_id_list,
                     'IncludeSelector': 'ItemSpecifics',
                     'token': token['access_token']
                 }
@@ -94,72 +115,61 @@ class EbayPricer:
                             specifics = shopping_item.ItemSpecifics
                             if specifics is not None:
                                 itemMap = {}
-                                nameValueList = shopping_item.ItemSpecifics.NameValueList
-                                for entry in nameValueList:
-                                    if entry.Name in important_fields:
-                                        itemMap[entry.Name] = entry.Value
-                                    if graded and entry.Name in conditional_fields:
-                                        itemMap[entry.Name] = entry.Value
-                                    if entry.Name == 'Publisher':
-                                        shopping_item_publisher = entry.Value
-                                    if entry.Name == 'Series Title':
-                                        shopping_item_series_title = entry.Value
-                                    if entry.Name == 'Issue Number':
-                                        shopping_item_issue_number = entry.Value
+                                match_map = {}
 
-                                if shopping_item_series_title is not None \
-                                        and shopping_item_publisher is not None \
-                                        and shopping_item_issue_number is not None \
-                                        and re.search(shopping_item_publisher, publisher, re.IGNORECASE) \
-                                        and re.search(shopping_item_series_title, title, re.IGNORECASE) \
-                                        and issue_number == shopping_item_issue_number:
-                                    print('Exact Match! %s' % shopping_item.Title)
-                                    # print('Details %s' % itemMap)
-                                    print(shopping_item.ConvertedCurrentPrice)
-                                    match = True
-                                else:
-                                    # This is a fuzzy match from ebay We'll try to parse the details from the listing title
-                                    # and whatever values are supplied in the itemSpecifics
-                                    # Things to consider: Facsimile, Homages (not the studio), Lots, Trades
-                                    shopping_item_title = shopping_item.Title
-                                    if not re.search(shopping_item_title, 'facsimile', re.IGNORECASE) \
-                                            and not re.search(shopping_item_title, 'homage', re.IGNORECASE):
-                                        print('eBay Match %s' % shopping_item_title)
-                                        # print('Details %s' % itemMap)
+                                if (isinstance(specifics.NameValueList, list)) and len(specifics.NameValueList) > 0:
+                                    matched_fields = exact_match_fields.copy()
+                                    for entry in specifics.NameValueList:
+                                        if entry.Name in important_fields:
+                                            itemMap[entry.Name] = entry.Value
+                                        if bool(item[decider_field]) and entry.Name in conditional_fields:
+                                            itemMap[entry.Name] = entry.Value
+                                            matched_fields.append(entry.Name)
+
+                                        if entry.Name in exact_match_fields:
+                                            match_map[entry.Name] = entry.Value
+
+                                    if all(elem in match_map.keys() for elem in exact_match_fields) \
+                                            and compareMaps(itemMap, item, matched_fields):
+                                        # print('Exact Match! %s' % shopping_item.Title)
                                         # print(shopping_item.ConvertedCurrentPrice)
-
-                                        # if re.search(title, shopping_item_title, re.IGNORECASE):
-                                        # print('List Title %s contains search title %s'
-                                        #       % (shopping_item_title, title))
-
-                                        # if re.search(issue_number, shopping_item_title, re.IGNORECASE):
-                                        # print('List Title %s contains issue number %s'
-                                        #       % (shopping_item_title, issue_number))
                                         match = True
+                                    else:
+                                        # TODO: Remove comic specific handling and take from a supplied list of blockwords
+                                        # This is a fuzzy match from ebay. We'll try to parse the details from the listing title
+                                        # and whatever values are supplied in the itemSpecifics.
+                                        # Things to consider: Facsimile, Homages (not the studio), Lots, Trades
+                                        shopping_item_title = shopping_item.Title
+                                        if not re.search(shopping_item_title, 'facsimile', re.IGNORECASE) \
+                                                and not re.search(shopping_item_title, 'homage', re.IGNORECASE):
+                                            # print('eBay Match %s' % shopping_item_title)
+                                            match = True
 
-                        except Exception as e:
-                            print(e)
+                        except AttributeError:
+                            pass
+                        except KeyError:
+                            pass
 
                 if match and len(prices) > 0:
                     mean_price = mean(prices)
                     median_price = median(prices)
                     mode_price = mode(prices)
 
-                    self.collection_value['mean'] = self.collection_value['mean'] + mean_price
-                    self.collection_value['median'] = self.collection_value['median'] + median_price
-                    self.collection_value['mode'] = self.collection_value['mode'] + mode_price
-                    self.collection_value['low'] = self.collection_value['low'] + low
-                    self.collection_value['high'] = self.collection_value['high'] + high
+                    self.list_value['mean'] = self.list_value['mean'] + mean_price
+                    self.list_value['median'] = self.list_value['median'] + median_price
+                    self.list_value['mode'] = self.list_value['mode'] + mode_price
+                    self.list_value['low'] = self.list_value['low'] + low
+                    self.list_value['high'] = self.list_value['high'] + high
 
             else:
                 print('Not found: %s', request['keywords'])
                 break
 
             print('Comic %s has pricing of mean: %s median: %s mode: %s low: %s high: %s' %
-                  (comic, mean_price, median_price, mode_price, low, high))
+                  (item, mean_price, median_price, mode_price, low, high))
             print('=======================================================================')
 
-        print('final pricing:\n%s' % self.collection_value)
+        print('final pricing:\n%s' % self.list_value)
 
     @classmethod
     def getPaginatedListing(cls, args):
