@@ -3,6 +3,8 @@ Specifically created as comic pricing scraper, as I go along I'll make the entri
 
 Based on the tutorial found at:  https://linuxconfig.org/introduction-to-ebay-api-with-python-obtaining-keys-and-accessing-the-sandbox-part-1
 
+Uses OAuth token to auithenticate with eBay APIs, this is performed with an override of the eBaySDK Shopping Connection class.
+
 To use this repo use a configuration file as recommended on the tutorial with your own values from developer.ebay.com:
 ```
 name: ebay_api_config
