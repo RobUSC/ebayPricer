@@ -36,17 +36,6 @@ open.api.ebay.com:
 ```
 
 TODO: 
-Fix the `X-EBAY-API-IAF-TOKEN` issue with the existing SDK which is required now, but has not been updated in the ebaySDK used. Modified local code by injecting the value into the local SDK file for now:
-
-```    
-def build_request_headers(self, verb):
-        headers = {
-            "X-EBAY-API-VERSION": self.config.get('version', ''),
-            "X-EBAY-API-APP-ID": self.config.get('appid', ''),
-            "X-EBAY-API-SITE-ID": self.config.get('siteid', ''),
-            "X-EBAY-API-CALL-NAME": verb,
-            "X-EBAY-API-REQUEST-ENCODING": "XML",
-            "X-EBAY-API-IAF-TOKEN": self.config.get('token', ''),
-            "Content-Type": "text/xml"
-        }
-```
+Integreate with MongoDB for better reflection on processed data (highs/lows/outliers)
+Refine eBay matched item filtering (e.g non exact matches)
+Filter clickbait titles like "CGC IT!" or "Homages"
