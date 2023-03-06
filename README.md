@@ -36,6 +36,6 @@ open.api.ebay.com:
 ```
 
 TODO: 
-Integreate with MongoDB for better reflection on processed data (highs/lows/outliers)
+Integrate with MongoDB for better reflection on processed data (highs/lows/outliers)
 Refine eBay matched item filtering (e.g non exact matches)
 Filter clickbait titles like "CGC IT!" or "Homages"
