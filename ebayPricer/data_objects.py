@@ -1,9 +1,8 @@
 from pymongo import MongoClient
 from bson import ObjectId
 
-from ebayPricer import constants
+from ebayPricer 
 
-# CONNECTION_STRING= 'mongodb://ebayPricer:4a!t1AIadUc&6!al@ebayPricer-026603657099.us-east-1.docdb-elastic.amazonaws.com:27017'
 CONNECTION_STRING = 'mongodb://localhost:27017'
 client = MongoClient(CONNECTION_STRING)
 database = client['EbayPricer']
