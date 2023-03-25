@@ -129,6 +129,6 @@ dmypy.json
 .pyre/
 
 #Project Files
-/ebay.yaml
+/ebayPricer/config/ebay.yaml
 /.idea/
 

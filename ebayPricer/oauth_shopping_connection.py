@@ -15,7 +15,7 @@ class OAuthShoppingConnection(Connection):
 
         self.config = Config(domain=kwargs.get('domain', 'open.api.ebay.com'),
                              connection_kwargs=kwargs,
-                             config_file=kwargs.get('config_file', 'ebay.yaml'))
+                             config_file=kwargs.get('config_file', 'config/ebay.yaml'))
 
         # override yaml defaults with args sent to the constructor
         self.config.set('domain', kwargs.get('domain', 'open.api.ebay.com'))

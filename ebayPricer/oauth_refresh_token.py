@@ -15,8 +15,8 @@ class OAuthRefreshToken(object):
     @classmethod
     def get_token(cls, **kwargs):
         cls.config = Config(domain=kwargs.get('domain', 'api.ebay.com'),
-                             connection_kwargs=kwargs,
-                             config_file=kwargs.get('config_file', 'ebay.yaml'))
+                            connection_kwargs=kwargs,
+                            config_file=kwargs.get('config_file', 'config/ebay.yaml'))
         return cls.getAuthToken(cls.config.get('redirecturi'), cls.config.get('appid'), cls.config.get('certid'))
 
     @classmethod
