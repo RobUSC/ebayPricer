@@ -104,6 +104,9 @@ class EbayPricer:
                 pass
 
             if size > 0:
+                high_item = None
+                low_item = None
+
                 for found_item in response.reply.searchResult.item:
 
                     if found_item is not None:

@@ -82,6 +82,6 @@ def test_db_functions(data_setup, clean_up):
             printer(item)
         printer(line_delimiter)
 
-
-noisy = False
-test_db_functions(True, True)
+#
+# noisy = False
+# test_db_functions(True, True)
