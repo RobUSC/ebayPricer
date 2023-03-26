@@ -37,7 +37,7 @@ class EbayPricer:
         self.token = None
 
     def set_args(self, args):
-        CONF_FILE = os.path.join('ebayPricer', 'config', 'ebay.yaml')
+        CONF_FILE = os.path.join(os.getcwd(), 'config', 'ebay.yaml')
         self.token = oauth_refresh_token.OAuthRefreshToken.get_token(config_file=CONF_FILE)
         self.finding_api = Connection_finding(config_file=CONF_FILE, siteid="EBAY-US")
         self.shopping_api = Connection_shopping(config_file=CONF_FILE, https=True)

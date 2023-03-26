@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 from bson import ObjectId
 
-from ebayPricer 
+from ebayPricer import constants
 
 CONNECTION_STRING = 'mongodb://localhost:27017'
 client = MongoClient(CONNECTION_STRING)
@@ -83,5 +83,5 @@ def test_db_functions(data_setup, clean_up):
         printer(line_delimiter)
 
 
-# noisy = False
-# test_db_functions(True, True)
+noisy = False
+test_db_functions(True, True)

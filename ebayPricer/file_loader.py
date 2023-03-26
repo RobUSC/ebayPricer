@@ -3,6 +3,7 @@ import os
 import glob
 import pandas as pd
 import warnings
+import openpyxl
 
 from bson import ObjectId
 
@@ -16,7 +17,7 @@ def ingest_excel_sheets():
 
     data_objects.clear_file_imports()
 
-    path_name = os.path.join("ebayPricer", "imports")
+    path_name = os.path.join(os.getcwd(), "imports")
     for filename in glob.glob(os.path.join(path_name, '*.xlsx')):
         with open(filename, 'r') as f:
             warnings.simplefilter(action='ignore', category=UserWarning)
@@ -52,4 +53,4 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-# def update_excel_sheets():
+
